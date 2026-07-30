@@ -495,20 +495,20 @@
     const followX = gsap.quickTo(rocketParallax, 'x', { duration: 0.85, ease: 'power3.out' });
     const followY = gsap.quickTo(rocketParallax, 'y', { duration: 0.85, ease: 'power3.out' });
 
+    let mouseX = startCenterX;
+    let mouseY = startCenterY;
+
     window.addEventListener('mousemove', (e) => {
       followX(e.clientX);
       followY(e.clientY);
+      mouseX = e.clientX;
+      mouseY = e.clientY;
     });
 
-    // Nose-direction rotation: the rocket points wherever it's actually
-    // heading (real angle of travel), and can spin through full loops if
-    // the cursor circles around — not just a small capped lean.
-    let prevX = startCenterX;
-    let prevY = startCenterY;
+    // Look-at rotation: the nose simply aims at the cursor's current
+    // position, nothing else. No velocity, no flipping — just a steady aim.
     let currentRotation = 0;
-    let lastAngle = -90; // resting heading: nose pointing up
-    const ROTATION_SMOOTHING = 0.06; // lower = lazier turn, higher = snappier
-    const SPEED_EPSILON = 0.4;       // px/frame below which heading is held, not recalculated
+    const ROTATION_SMOOTHING = 0.08; // lower = lazier turn, higher = snappier
 
     function shortestAngleDiff(from, to) {
       let diff = (to - from) % 360;
@@ -520,18 +520,11 @@
     gsap.ticker.add(() => {
       const curX = gsap.getProperty(rocketParallax, 'x');
       const curY = gsap.getProperty(rocketParallax, 'y');
-      const vx = curX - prevX;
-      const vy = curY - prevY;
-      prevX = curX;
-      prevY = curY;
 
-      const speed = Math.hypot(vx, vy);
-      if (speed > SPEED_EPSILON) {
-        // +90 because the artwork's resting pose points "up" (screen -90°)
-        lastAngle = Math.atan2(vy, vx) * (180 / Math.PI) + 90;
-      }
+      // +90 because the artwork's resting pose points "up" (screen -90°)
+      const targetAngle = Math.atan2(mouseY - curY, mouseX - curX) * (180 / Math.PI) + 90;
 
-      const diff = shortestAngleDiff(currentRotation % 360, lastAngle);
+      const diff = shortestAngleDiff(currentRotation % 360, targetAngle);
       currentRotation += diff * ROTATION_SMOOTHING;
       gsap.set(rocketParallax, { rotation: currentRotation });
     });
