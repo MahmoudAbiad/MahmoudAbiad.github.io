@@ -239,6 +239,7 @@
       <div class="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-cyan-500/20 blur-[90px]"></div>
 
       <!-- Self-contained animated rocket (no external Lottie fetch required) -->
+      <div id="rocket-parallax" class="relative">
       <div id="rocket-rig" class="relative w-64 h-64 sm:w-80 sm:h-80">
         <svg id="rocket-svg" viewBox="0 0 200 320" class="absolute inset-0 w-full h-full drop-shadow-[0_0_35px_rgba(34,211,238,0.45)]">
           <defs>
@@ -281,6 +282,7 @@
             <path d="M85 222 C90 245 95 260 100 275 C105 260 110 245 115 222 Z" fill="url(#flameGrad)"/>
           </g>
         </svg>
+      </div>
       </div>
     </div>
 
@@ -431,6 +433,38 @@
     .to('#hero-ctas', { opacity: 1, y: 0, duration: 0.7 }, '-=0.5')
     .to('#hero-trust', { opacity: 1, y: 0, duration: 0.6 }, '-=0.45')
     .to('#hero-lottie', { opacity: 1, y: 0, duration: 0.9 }, '-=0.9');
+
+  // Rocket follows the cursor on desktop (fine pointer + wide screen only)
+  const rocketParallax = document.getElementById('rocket-parallax');
+  const heroSection = document.querySelector('section.bg-mesh');
+  const isFinePointer = window.matchMedia('(pointer: fine)').matches;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (rocketParallax && heroSection && isFinePointer && !prefersReducedMotion) {
+    const moveX = gsap.quickTo(rocketParallax, 'x', { duration: 0.9, ease: 'power3.out' });
+    const moveY = gsap.quickTo(rocketParallax, 'y', { duration: 0.9, ease: 'power3.out' });
+    const rotate = gsap.quickTo(rocketParallax, 'rotation', { duration: 0.9, ease: 'power3.out' });
+
+    const MAX_OFFSET = 28;   // px the rocket can drift toward the cursor
+    const MAX_TILT = 8;      // degrees of tilt toward the cursor
+
+    window.addEventListener('mousemove', (e) => {
+      if (window.innerWidth < 1024) return; // desktop breakpoint only
+      const rect = heroSection.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width / 2);
+      const dy = (e.clientY - cy) / (rect.height / 2);
+
+      moveX(dx * MAX_OFFSET);
+      moveY(dy * MAX_OFFSET);
+      rotate(dx * MAX_TILT);
+    });
+
+    window.addEventListener('mouseleave', () => {
+      moveX(0); moveY(0); rotate(0);
+    });
+  }
 
   // Scroll-triggered fade-ins for cards & headings
   gsap.utils.toArray('.feature-card, .step-card, #features h2, #features span, #how h2, #how span, #footer-cta h2, #footer-cta p, #footer-cta a')
