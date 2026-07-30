@@ -492,17 +492,31 @@
 
     gsap.set('#rocket-rig', { transformOrigin: '50% 50%', scale: 0.4 });
 
-    const followX = gsap.quickTo(rocketParallax, 'x', { duration: 0.7, ease: 'power3.out' });
-    const followY = gsap.quickTo(rocketParallax, 'y', { duration: 0.7, ease: 'power3.out' });
-    const tilt = gsap.quickTo(rocketParallax, 'rotation', { duration: 0.5, ease: 'power2.out' });
-
-    let lastX = startCenterX;
+    const followX = gsap.quickTo(rocketParallax, 'x', { duration: 0.6, ease: 'power3.out' });
+    const followY = gsap.quickTo(rocketParallax, 'y', { duration: 0.6, ease: 'power3.out' });
 
     window.addEventListener('mousemove', (e) => {
       followX(e.clientX);
       followY(e.clientY);
-      tilt(gsap.utils.clamp(-10, 10, (e.clientX - lastX) * 0.6));
-      lastX = e.clientX;
+    });
+
+    // Realistic banking: measure the rocket's OWN on-screen velocity every
+    // animation frame (not the raw mouse events) and lean into the turn,
+    // easing back to upright the moment it settles — like a real vehicle.
+    let prevX = startCenterX;
+    let tiltCurrent = 0;
+    const MAX_TILT = 24;        // degrees at full lean
+    const VELOCITY_TO_TILT = 1.1;
+    const TILT_SMOOTHING = 0.16; // lower = smoother/lazier lean
+
+    gsap.ticker.add(() => {
+      const curX = gsap.getProperty(rocketParallax, 'x');
+      const velocityX = curX - prevX; // px moved since last frame
+      prevX = curX;
+
+      const targetTilt = gsap.utils.clamp(-MAX_TILT, MAX_TILT, velocityX * VELOCITY_TO_TILT);
+      tiltCurrent += (targetTilt - tiltCurrent) * TILT_SMOOTHING;
+      gsap.set(rocketParallax, { rotation: tiltCurrent });
     });
   }
 
