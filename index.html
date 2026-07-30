@@ -1,27 +1,402 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أبيض | منصتك الذكية للاختبارات الجامعية</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .container { max-width: 600px; width: 100%; background: #1e293b; padding: 40px 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #334155; }
-        h1 { font-size: 2.5rem; color: #38bdf8; margin-bottom: 15px; }
-        p { font-size: 1.1rem; color: #94a3b8; line-height: 1.6; margin-bottom: 30px; }
-        .btn { display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 1.2rem; font-weight: bold; border-radius: 12px; transition: 0.3s ease; }
-        .btn:hover { background: #0369a1; transform: translateY(-2px); }
-        footer { margin-top: 30px; font-size: 0.85rem; color: #64748b; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أبيض | حوّل ملخصاتك إلى اختبارات ذكية في ثوانٍ</title>
+<meta name="description" content="بوت أبيض التعليمي على تيليجرام يحوّل ملفاتك وصورك الدراسية إلى اختبارات MCQ تفاعلية بالذكاء الاصطناعي فوراً.">
+
+<!-- Google Fonts: Cairo (Display) + Tajawal (Body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['Cairo', 'sans-serif'],
+          body: ['Tajawal', 'sans-serif'],
+        },
+        colors: {
+          ink: '#080c14',
+          panel: '#0f172a',
+          cyan: {
+            glow: '#22d3ee',
+          },
+          blu: {
+            glow: '#3b82f6',
+          },
+          violet: {
+            glow: '#818cf8',
+          }
+        },
+      }
+    }
+  }
+</script>
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+<!-- GSAP + ScrollTrigger -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<!-- DotLottie Player -->
+<script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+
+<style>
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: #080c14;
+    font-family: 'Tajawal', sans-serif;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Cairo', sans-serif; }
+
+  /* Ambient background glows */
+  .bg-mesh {
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(34,211,238,0.14), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(59,130,246,0.16), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(129,140,248,0.10), transparent 50%);
+  }
+
+  /* Fine scan-line / exam-paper grid texture — nods to the "paper" being scanned */
+  .paper-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+
+  .glow-btn {
+    box-shadow: 0 0 20px 2px rgba(34,211,238,0.35), 0 0 45px 8px rgba(59,130,246,0.20);
+    transition: box-shadow .35s ease, transform .35s ease;
+  }
+  .glow-btn:hover {
+    box-shadow: 0 0 30px 6px rgba(34,211,238,0.55), 0 0 65px 14px rgba(59,130,246,0.32);
+    transform: translateY(-2px);
+  }
+
+  .text-gradient {
+    background: linear-gradient(90deg, #f8fafc 10%, #22d3ee 50%, #818cf8 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Signature element: glowing MCQ answer bubbles (A B C D) */
+  .mcq-bubble {
+    width: 3rem; height: 3rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9999px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    border: 1.5px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.04);
+    color: rgba(226,232,240,0.65);
+    backdrop-filter: blur(12px);
+  }
+  .mcq-bubble.correct {
+    border-color: #22d3ee;
+    color: #d5faff;
+    background: radial-gradient(circle at 35% 30%, rgba(34,211,238,0.55), rgba(59,130,246,0.25));
+    box-shadow: 0 0 25px 3px rgba(34,211,238,0.55);
+  }
+
+  .float-slow { animation: floaty 6s ease-in-out infinite; }
+  .float-slower { animation: floaty 8s ease-in-out infinite; animation-delay: -2s; }
+  .float-slowest { animation: floaty 7s ease-in-out infinite; animation-delay: -4s; }
+  @keyframes floaty {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-16px) rotate(3deg); }
+  }
+
+  .step-line {
+    background: linear-gradient(180deg, transparent, rgba(34,211,238,0.5), rgba(59,130,246,0.5), transparent);
+  }
+
+  ::selection { background: rgba(34,211,238,0.35); color: #fff; }
+
+  /* Visible keyboard focus */
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .float-slow, .float-slower, .float-slowest { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  .fade-up { opacity: 0; transform: translateY(36px); }
+</style>
 </head>
-<body>
-    <div class="container">
-        <h1>أبيض ⚡</h1>
-        <p>مساعدك التفاعلي الأسرع لتحويل الملفات والملخصات إلى اختبارات متعددة الخيارات بسهولة ودقة.</p>
-        <!-- استبدل الرابط أدناه برابط البوت الخاص بك -->
-        <a href="https://t.me/AbiadQuizMakerBot" class="btn" target="_blank">جرب البوت الآن عبر تلغرام</a>
+
+<body class="text-slate-200 antialiased selection:bg-cyan-400/30">
+
+<!-- ============ NAVBAR ============ -->
+<header class="fixed top-0 inset-x-0 z-50">
+  <nav class="max-w-6xl mx-auto mt-4 px-5">
+    <div class="glass rounded-2xl px-5 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_18px_rgba(34,211,238,0.5)]">
+          <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+        </div>
+        <span class="font-display font-extrabold text-lg text-white">أبيض</span>
+      </div>
+      <div class="hidden md:flex items-center gap-8 text-sm text-slate-300 font-medium">
+        <a href="#features" class="hover:text-cyan-300 transition-colors">المزايا</a>
+        <a href="#how" class="hover:text-cyan-300 transition-colors">كيف يعمل</a>
+        <a href="#footer-cta" class="hover:text-cyan-300 transition-colors">تواصل</a>
+      </div>
+      <a href="https://t.me/YourBotUsername" target="_blank" rel="noopener"
+         class="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-cyan-400 to-blue-600 text-ink font-bold text-sm px-4 py-2 glow-btn">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        جرّب الآن
+      </a>
     </div>
-    <footer>جميع الحقوق محفوظة © أبيض</footer>
+  </nav>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="relative bg-mesh min-h-screen flex items-center pt-32 pb-20 px-5">
+  <div class="absolute inset-0 paper-grid pointer-events-none"></div>
+
+  <!-- Floating MCQ signature bubbles, ambient -->
+  <div class="hidden lg:flex mcq-bubble float-slow absolute top-[22%] right-[8%]">A</div>
+  <div class="hidden lg:flex mcq-bubble correct float-slower absolute top-[38%] right-[18%]">B</div>
+  <div class="hidden lg:flex mcq-bubble float-slowest absolute top-[62%] right-[6%]">C</div>
+  <div class="hidden lg:flex mcq-bubble float-slow absolute top-[16%] left-[9%]">D</div>
+
+  <div class="max-w-6xl mx-auto relative w-full grid lg:grid-cols-2 gap-14 items-center">
+
+    <div class="text-center lg:text-right">
+      <span id="hero-badge" class="fade-up inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-cyan-200 bg-cyan-400/10 border border-cyan-400/25 rounded-full px-4 py-1.5 mb-6">
+        ⚡ المساعد الذكي الأول للطلاب الجامعيين
+      </span>
+
+      <h1 id="hero-title" class="fade-up font-display font-black text-4xl sm:text-5xl lg:text-[3.4rem] leading-[1.25] text-white mb-6">
+        حوّل ملخصاتك إلى
+        <span class="text-gradient">اختبارات تفاعلية</span>
+        في ثوانٍ مع أبيض
+      </h1>
+
+      <p id="hero-sub" class="fade-up text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 mb-9">
+        ارفع ملف PDF أو صورة لمحاضرتك، ودع الذكاء الاصطناعي يحوّلها فوراً إلى أسئلة اختيار من متعدد جاهزة للمراجعة — بلا تنسيق يدوي، وبلا تعقيد.
+      </p>
+
+      <div id="hero-ctas" class="fade-up flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+        <a href="https://t.me/YourBotUsername" target="_blank" rel="noopener"
+           class="glow-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-cyan-400 to-blue-600 text-ink font-display font-extrabold text-base px-7 py-3.5">
+          جرب البوت مجاناً الآن 🚀
+        </a>
+        <a href="#how"
+           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 hover:border-cyan-300/50 hover:bg-white/5 text-slate-200 font-bold text-base px-7 py-3.5 transition-colors">
+          كيف يعمل البوت؟
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+      </div>
+
+      <div id="hero-trust" class="fade-up flex items-center gap-5 justify-center lg:justify-start mt-9 text-slate-500 text-xs sm:text-sm">
+        <div class="flex items-center gap-1.5"><i data-lucide="zap" class="w-4 h-4 text-cyan-300"></i> استجابة فورية</div>
+        <div class="flex items-center gap-1.5"><i data-lucide="lock" class="w-4 h-4 text-cyan-300"></i> ملفاتك بأمان تام</div>
+        <div class="flex items-center gap-1.5"><i data-lucide="graduation-cap" class="w-4 h-4 text-cyan-300"></i> مصمم للطلاب</div>
+      </div>
+    </div>
+
+    <div id="hero-lottie" class="fade-up relative flex items-center justify-center">
+      <div class="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-cyan-500/20 blur-[90px]"></div>
+      <dotlottie-player
+        src="https://assets3.lottiefiles.com/packages/lf20_l38eb04a.json"
+        background="transparent"
+        speed="1"
+        style="width: 320px; height: 320px; max-width: 80vw;"
+        loop
+        autoplay>
+      </dotlottie-player>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" class="relative py-24 px-5">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center max-w-2xl mx-auto mb-16">
+      <span class="fade-up text-cyan-300 font-bold text-sm tracking-wide">لماذا أبيض؟</span>
+      <h2 class="fade-up font-display font-extrabold text-3xl sm:text-4xl text-white mt-3">
+        كل ما يحتاجه الطالب في مساعد واحد
+      </h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- Card 1 -->
+      <div class="feature-card fade-up glass rounded-3xl p-8 hover:border-cyan-400/30 transition-colors">
+        <div class="w-14 h-14 rounded-2xl bg-cyan-400/10 border border-cyan-400/25 flex items-center justify-center mb-6">
+          <i data-lucide="file-scan" class="w-7 h-7 text-cyan-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">تحويل تلقائي للملفات</h3>
+        <p class="text-slate-400 leading-relaxed text-sm">
+          ارفع الملفات والصور الدراسية، ودع أبيض يستخرج المحتوى ويولّد منه أسئلة اختيار من متعدد جاهزة للمراجعة مباشرة.
+        </p>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="feature-card fade-up glass rounded-3xl p-8 hover:border-cyan-400/30 transition-colors">
+        <div class="w-14 h-14 rounded-2xl bg-blue-400/10 border border-blue-400/25 flex items-center justify-center mb-6">
+          <i data-lucide="bar-chart-3" class="w-7 h-7 text-blue-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">تحليلات فورية لمستواك</h3>
+        <p class="text-slate-400 leading-relaxed text-sm">
+          بعد كل اختبار، تحصل على نتيجتك ونقاط ضعفك بدقة، لتعرف بالضبط أين تحتاج للمراجعة قبل الامتحان.
+        </p>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="feature-card fade-up glass rounded-3xl p-8 hover:border-cyan-400/30 transition-colors">
+        <div class="w-14 h-14 rounded-2xl bg-violet-400/10 border border-violet-400/25 flex items-center justify-center mb-6">
+          <i data-lucide="rocket" class="w-7 h-7 text-violet-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">سرعة فائقة بلا تعقيد</h3>
+        <p class="text-slate-400 leading-relaxed text-sm">
+          لا واجهات معقدة ولا تطبيقات إضافية — كل شيء يحدث داخل تيليجرام، بسرعة الذكاء الاصطناعي الحقيقية.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how" class="relative py-24 px-5 bg-panel/40">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center max-w-2xl mx-auto mb-20">
+      <span class="fade-up text-cyan-300 font-bold text-sm tracking-wide">مسار العمل</span>
+      <h2 class="fade-up font-display font-extrabold text-3xl sm:text-4xl text-white mt-3">
+        من الملخص إلى الاختبار في ٣ خطوات
+      </h2>
+    </div>
+
+    <div class="relative grid md:grid-cols-3 gap-10 md:gap-6">
+      <!-- connecting line for desktop -->
+      <div class="hidden md:block absolute top-8 right-0 left-0 h-px step-line"></div>
+
+      <!-- Step 1 -->
+      <div class="step-card fade-up relative text-center flex flex-col items-center">
+        <div class="relative z-10 w-16 h-16 rounded-2xl glass flex items-center justify-center mb-6 border-cyan-400/30">
+          <i data-lucide="upload-cloud" class="w-7 h-7 text-cyan-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-lg text-white mb-2">أرسل ملخصك أو صورتك</h3>
+        <p class="text-slate-400 text-sm leading-relaxed max-w-xs">
+          فقط ابدأ محادثة مع البوت على تيليجرام وأرفق ملف PDF أو صورة من محاضرتك.
+        </p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card fade-up relative text-center flex flex-col items-center">
+        <div class="relative z-10 w-16 h-16 rounded-2xl glass flex items-center justify-center mb-6 border-blue-400/30">
+          <i data-lucide="brain-circuit" class="w-7 h-7 text-blue-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-lg text-white mb-2">يحلّل الذكاء الاصطناعي المحتوى</h3>
+        <p class="text-slate-400 text-sm leading-relaxed max-w-xs">
+          يقرأ أبيض المحتوى، يفهم النقاط الأساسية، ويولّد أسئلة اختيار من متعدد دقيقة تلقائياً.
+        </p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card fade-up relative text-center flex flex-col items-center">
+        <div class="relative z-10 w-16 h-16 rounded-2xl glass flex items-center justify-center mb-6 border-violet-400/30">
+          <i data-lucide="check-circle-2" class="w-7 h-7 text-violet-300"></i>
+        </div>
+        <h3 class="font-display font-bold text-lg text-white mb-2">ابدأ التحدي فوراً</h3>
+        <p class="text-slate-400 text-sm leading-relaxed max-w-xs">
+          أجب على الأسئلة داخل تيليجرام مباشرة، واحصل على نتيجتك وتحليل أدائك في الحال.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER & FINAL CTA ============ -->
+<footer id="footer-cta" class="relative pt-24 pb-10 px-5 bg-mesh overflow-hidden">
+  <div class="absolute inset-0 paper-grid pointer-events-none opacity-60"></div>
+
+  <div class="max-w-3xl mx-auto text-center relative">
+    <h2 class="fade-up font-display font-extrabold text-3xl sm:text-4xl text-white mb-5">
+      جاهز تحوّل مذاكرتك إلى تجربة تفاعلية؟
+    </h2>
+    <p class="fade-up text-slate-400 mb-9 leading-relaxed">
+      انضم الآن إلى آلاف الطلاب الذين يستخدمون أبيض لمراجعة أسرع وأذكى قبل كل امتحان.
+    </p>
+    <a href="https://t.me/YourBotUsername" target="_blank" rel="noopener"
+       class="fade-up glow-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-cyan-400 to-blue-600 text-ink font-display font-extrabold text-base px-8 py-4">
+      <i data-lucide="send" class="w-5 h-5"></i>
+      ابدأ مع أبيض على تيليجرام
+    </a>
+  </div>
+
+  <div class="max-w-6xl mx-auto mt-20 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+        <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-display font-bold text-white">أبيض</span>
+    </div>
+    <p class="text-slate-500 text-sm">جميع الحقوق محفوظة © أبيض</p>
+    <div class="flex items-center gap-4 text-slate-500">
+      <a href="https://t.me/YourBotUsername" target="_blank" rel="noopener" class="hover:text-cyan-300 transition-colors" aria-label="تيليجرام">
+        <i data-lucide="send" class="w-5 h-5"></i>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ SCRIPTS ============ -->
+<script>
+  lucide.createIcons();
+  gsap.registerPlugin(ScrollTrigger);
+
+  // Hero entrance sequence
+  gsap.timeline({ defaults: { ease: 'power3.out' } })
+    .to('#hero-badge', { opacity: 1, y: 0, duration: 0.6 })
+    .to('#hero-title', { opacity: 1, y: 0, duration: 0.8 }, '-=0.35')
+    .to('#hero-sub', { opacity: 1, y: 0, duration: 0.7 }, '-=0.5')
+    .to('#hero-ctas', { opacity: 1, y: 0, duration: 0.7 }, '-=0.5')
+    .to('#hero-trust', { opacity: 1, y: 0, duration: 0.6 }, '-=0.45')
+    .to('#hero-lottie', { opacity: 1, y: 0, duration: 0.9 }, '-=0.9');
+
+  // Scroll-triggered fade-ins for cards & headings
+  gsap.utils.toArray('.feature-card, .step-card, #features h2, #features span, #how h2, #how span, #footer-cta h2, #footer-cta p, #footer-cta a')
+    .forEach((el, i) => {
+      gsap.to(el, {
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        ease: 'power3.out',
+        delay: (i % 3) * 0.1,
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        }
+      });
+    });
+</script>
+
 </body>
 </html>
