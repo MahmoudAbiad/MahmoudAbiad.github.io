@@ -492,31 +492,48 @@
 
     gsap.set('#rocket-rig', { transformOrigin: '50% 50%', scale: 0.4 });
 
-    const followX = gsap.quickTo(rocketParallax, 'x', { duration: 0.6, ease: 'power3.out' });
-    const followY = gsap.quickTo(rocketParallax, 'y', { duration: 0.6, ease: 'power3.out' });
+    const followX = gsap.quickTo(rocketParallax, 'x', { duration: 0.85, ease: 'power3.out' });
+    const followY = gsap.quickTo(rocketParallax, 'y', { duration: 0.85, ease: 'power3.out' });
 
     window.addEventListener('mousemove', (e) => {
       followX(e.clientX);
       followY(e.clientY);
     });
 
-    // Realistic banking: measure the rocket's OWN on-screen velocity every
-    // animation frame (not the raw mouse events) and lean into the turn,
-    // easing back to upright the moment it settles — like a real vehicle.
+    // Nose-direction rotation: the rocket points wherever it's actually
+    // heading (real angle of travel), and can spin through full loops if
+    // the cursor circles around — not just a small capped lean.
     let prevX = startCenterX;
-    let tiltCurrent = 0;
-    const MAX_TILT = 24;        // degrees at full lean
-    const VELOCITY_TO_TILT = 1.1;
-    const TILT_SMOOTHING = 0.16; // lower = smoother/lazier lean
+    let prevY = startCenterY;
+    let currentRotation = 0;
+    let lastAngle = -90; // resting heading: nose pointing up
+    const ROTATION_SMOOTHING = 0.06; // lower = lazier turn, higher = snappier
+    const SPEED_EPSILON = 0.4;       // px/frame below which heading is held, not recalculated
+
+    function shortestAngleDiff(from, to) {
+      let diff = (to - from) % 360;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      return diff;
+    }
 
     gsap.ticker.add(() => {
       const curX = gsap.getProperty(rocketParallax, 'x');
-      const velocityX = curX - prevX; // px moved since last frame
+      const curY = gsap.getProperty(rocketParallax, 'y');
+      const vx = curX - prevX;
+      const vy = curY - prevY;
       prevX = curX;
+      prevY = curY;
 
-      const targetTilt = gsap.utils.clamp(-MAX_TILT, MAX_TILT, velocityX * VELOCITY_TO_TILT);
-      tiltCurrent += (targetTilt - tiltCurrent) * TILT_SMOOTHING;
-      gsap.set(rocketParallax, { rotation: tiltCurrent });
+      const speed = Math.hypot(vx, vy);
+      if (speed > SPEED_EPSILON) {
+        // +90 because the artwork's resting pose points "up" (screen -90°)
+        lastAngle = Math.atan2(vy, vx) * (180 / Math.PI) + 90;
+      }
+
+      const diff = shortestAngleDiff(currentRotation % 360, lastAngle);
+      currentRotation += diff * ROTATION_SMOOTHING;
+      gsap.set(rocketParallax, { rotation: currentRotation });
     });
   }
 
