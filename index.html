@@ -505,10 +505,14 @@
       mouseY = e.clientY;
     });
 
-    // Look-at rotation: the nose simply aims at the cursor's current
-    // position, nothing else. No velocity, no flipping — just a steady aim.
+    // Look-at rotation: the nose aims at the cursor's position — but only
+    // recalculates the angle once it's far enough away. Right on top of the
+    // cursor, tiny jitters make the angle unstable, so we hold the last
+    // steady heading instead of spinning wildly.
     let currentRotation = 0;
+    let lastAngle = -90; // resting heading: nose pointing up
     const ROTATION_SMOOTHING = 0.08; // lower = lazier turn, higher = snappier
+    const DEAD_ZONE = 14; // px — inside this radius, keep the last heading
 
     function shortestAngleDiff(from, to) {
       let diff = (to - from) % 360;
@@ -520,11 +524,15 @@
     gsap.ticker.add(() => {
       const curX = gsap.getProperty(rocketParallax, 'x');
       const curY = gsap.getProperty(rocketParallax, 'y');
+      const dx = mouseX - curX;
+      const dy = mouseY - curY;
 
-      // +90 because the artwork's resting pose points "up" (screen -90°)
-      const targetAngle = Math.atan2(mouseY - curY, mouseX - curX) * (180 / Math.PI) + 90;
+      if (Math.hypot(dx, dy) > DEAD_ZONE) {
+        // +90 because the artwork's resting pose points "up" (screen -90°)
+        lastAngle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+      }
 
-      const diff = shortestAngleDiff(currentRotation % 360, targetAngle);
+      const diff = shortestAngleDiff(currentRotation % 360, lastAngle);
       currentRotation += diff * ROTATION_SMOOTHING;
       gsap.set(rocketParallax, { rotation: currentRotation });
     });
